@@ -1,0 +1,203 @@
+---
+title: "Predicting Car's MPG Utilizing Multiple Linear Regression Model"
+author: "Siddharth Das, Russell Chien"
+date: "6/3/2022"
+output: pdf_document
+---
+
+# Purpose of Linear Regression Analysis
+
+Based on the Auto Dataset, we will create a Multiple Linear Regression Model to explain gas mileage, given other vehicle characteristics. The response variable will be in Miles Per Gallon(mpg). The regression model will include both quantitative and qualitative data.
+
+```{r, echo=FALSE, warning=FALSE}
+Auto <- ISLR::Auto
+```
+
+# Explore the Dataset
+
+The Auto Dataset contains 2 qualitative variables, name and origin. The other 7 variables are quantitative. There are 392 observations in this sample. Cylinders refers to the number of cylinders, between 4 and 8. Displacement refers to the engine displacement, in inches. Horsepower refers to engine horsepower. Weight refers to vehicle weight, in pounds(lbs). Acceleration is the time to accelerate from 0 to 60 mph, in seconds. Year is the model year of the car. Origin refers to the origin of the car. For the variable 'origin', 1 = American, 2 = European, and 3 = Japanese. Lastly, name refers to the vehicle name.
+
+```{r, echo=FALSE}
+summary(Auto)
+round(cor(Auto[,-9]),2)
+```
+
+```{r, echo=FALSE}
+plot(Auto[,-9])
+```
+
+# Comment on Results
+
+The scatter plot matrix and correlation matrix indicate that each variable has a normal distribution, and there may be a few potential outliers. Year has the weakest linear correlation to the other variables. MPG has a strong negative relationship with cylinders, displacement, horsepower, and weight. Cylinders has a strong positive correlation with displacement, horsepower, and weight. Displacement has a strong positive correlation with cylinders, horsepower, and weight. Horsepower has a strong positive relationship with cylinders, displacement, and weight. Due to the multitude of correlations between cylinders, displacement, and horsepower, we suspect multicollinearity may be a problem in this regression model.
+
+```{r, echo=FALSE}
+par(mfrow=c(2,2))
+boxplot(Auto$mpg~Auto$origin)
+boxplot(Auto$mpg~Auto$name)
+boxplot(Auto$mpg~Auto$cylinders)
+
+```
+
+Box plots are used to correctly visualize the relationship between qualitative predictor variables and the response variable(mpg). The box plot comparing origin to mpg indicates that American cars tend to have a lower mpg, while Japanese cars tend to have a higher mpg. European cars' mpg tend to be in the middle of American and Japanese cars. The box plot comparing name to mpg is not interpretable. The box plot comparing cylinders to mpg indicates that as the number of cylinders increase, mpg initially increases, and then decreases. As the number of cylinders increases past 4, the mpg begins to decrease.
+
+# Choose 6 Predictor Variables
+
+We chose cylinders, displacement, horsepower, weight, year, and origin as our predictor variables. Origin is the only selected qualitative predictor. The rest of the selected predictors are quantitative. We selected these 5 quantitative predictor variables because according to the scatter plot and correlation matrix, they had the strongest correlation to mpg. These relationships were either positive or negative. According to the box plots, origin had the stronger association to mpg, and the box plot was easily interpretable. The box plot with the only other qualitative variable, name, was much more difficult to interpret.
+
+# First Order Regression Model
+
+```{r, echo=FALSE}
+model1 = lm(Auto$mpg ~ Auto$cylinders + Auto$displacement + Auto$horsepower + Auto$weight + Auto$year + as.factor(Auto$origin))
+summary(model1)
+```
+
+As expected for the qualitative variable, origin, 3 levels means we have k-1 = 2 dummy variables.
+
+# Residual Plots
+
+```{r, echo=FALSE}
+par(mfrow=c(2,2))
+plot(model1)
+```
+
+The Residuals vs. Fitted plot is used to check for non linearity, unequal variance, and outliers. A horizontal line without distinct patterns indicates a linear relationship, which is desired. Since the line of the plot is not horizontal and appears to curve down and then up, the relationship is not perfectly linear, which is a problem. No changes in the distance between the residuals and their mean(0) indicates constant variance, which we want. Since the distance between the residuals and their mean often fluctuates, there is an unequal variance, which is a problem. In addition, the residuals vary more for the larger fitted values, indicating heteroscedasticity. Lastly, there appear to be a few potential outliers around the larger fitted values, which is a problem. Those potential outliers include observations 321 and 325.
+
+The Normal Q-Q plot is used to examine if the residuals are not normally distributed. A normal distribution is indicated by the residual points closely following the straight dashed line. Since the residual points closely follow the dashed line until the positive end of the Theoretical Quantiles, where it follows less closely, we can assume the residuals are normally distributed. We assume that the residuals are not perfectly normally distributed, but the distribution is close enough to normal to be acceptable.
+
+The Scale-Location plot is used to check for non linearity, unequal variance, and outliers. Since the line is not horizontal and has a distinct curve, the relationship is not linear, which is a problem. Given that the points are not equally spread and the line is not horizontal, there is an unequal variance, which is a problem. Observations 321 and 325 appear to be potential outliers.
+
+The Residuals vs. Leverage plot is used to identify outliers and extreme values that may influence the regression results when they are included or excluded from the analysis. This plot confirms that observations 325 and 382 are outliers, since they are \> 3 or \< -3 standard deviations from the mean. High leverage points are observations with a leverage statistic that greatly exceeds p/n. Since p/n = 7/392 = 0.019, and observation 14 has a leverage statistic \> 0.15, we suspect observation 14 may have high leverage.
+
+Overall, non linearity, unequal variance, and outliers are problems that are present in this model. In addition, the correlation matrix indicated that multicollinearity may be a problem as well.
+
+# Multicollinearity
+
+```{r, echo=FALSE, warning=FALSE}
+library(car)
+vif(model1)
+```
+
+Variance Inflation Factor(VIF) is a useful indicator to detect multicollinearity. The rule is that if the Variance Inflation Factor is greater than 10 or 5, then multicollinearity is high. Considering that cylinders, displacement, horsepower, and weight all have a VIF close to or greater than 10, we can conclude that multicollinearity is high in this model.
+
+# Remedial Measures
+
+To address the lack of linearity, we can try variable transformations, or polynomial regression. To address the unequal variance, we can try response variable transformations, or weighted least squares. An alternate option is to apply a concave function to the response variable 'mpg', as they are useful with alleviating unequal variance. To understand the reason for the outliers, we can refit the model without the outliers to gain insight into the data. We can analyze how the model changes to understand the affects of the outliers. To solve the issue of multicollinearity, we can remove the highly correlated independent variable(s), or we can linearly combine the independent variables.
+
+```{r, echo=FALSE}
+y_log = log(Auto$mpg)
+mod_log = lm(y_log ~ Auto$cylinders + Auto$displacement + Auto$horsepower + Auto$weight + Auto$year + as.factor(Auto$origin))
+par(mfrow=c(2,2))
+plot(mod_log)
+```
+
+To address the issues of non-linearity and unequal variance, we tried a multitude of response variable transformations. The attempted transformations included quadratic functions, and concave functions such as taking the square root or log of mpg. We found that the log transformation of mpg was the best option for a multitude of reasons. Based on the Residuals vs Fitted plot, we can see that the residuals of log(mpg) are much closer to 0 than with the original response variable, mpg. As a result, the horizontal line is more straight with less fluctuation, indicating improved linearity. In addition, it appears that points have become more equally spread around their mean(0), indicating a more equal variance. While the lack of linearity and unequal variance have improved, we cannot assume that there is perfect linearity, or a perfectly equal variance. This is because the horizontal line is still not perfectly straight, and the points are not exactly equidistant from the mean(0). To our surprise, the Normal Q-Q plot indicates that the concave function improved the normality of the distribution, as the dots follow the dashed line even closer than before.
+
+```{r, echo=FALSE}
+mod_log2 = lm(y_log ~ Auto$cylinders + Auto$horsepower + Auto$weight + Auto$year + as.factor(Auto$origin))
+par(mfrow=c(2,2))
+plot(mod_log2)
+```
+
+```{r, echo=FALSE}
+vif(mod_log2)
+```
+
+To address the issue of multicollinearity, we dropped displacement, which had the largest Variance Inflation Factor. Based on the residual plots, the most significant difference is found in the Normal Q-Q plot. The Normal Q-Q plot indicates that the distribution has become marginally less normal. While we prefer the most normal distribution, we accept this deficit for 2 reasons. First, the distribution is still close enough to normal to be acceptable. More importantly, by removing displacement from the model, the Variance Inflation Factor for all the predictor variables have dropped, with the highest VIF being less than 7.2. As a result, considering the totality of the implemented remedies, we have been able to improve the lack of linearity, unequal variance, normality of the distribution, and multicollinearity.
+
+# Brute Force Algorithms
+
+```{r, echo=FALSE, warning=FALSE}
+library(leaps)
+p = 6
+models = regsubsets(y_log ~ Auto$cylinders + Auto$horsepower + Auto$weight + Auto$year + as.factor(Auto$origin), data = Auto, nvmax = p-1)
+summary(models)
+```
+
+```{r, echo=FALSE}
+result.sum = summary(models)
+criteria = data.frame(Nvar = 1:(p-1), R2adj = result.sum$adjr2, CP = result.sum$cp, BIC = result.sum$bic)
+criteria
+```
+
+```{r, echo=FALSE}
+which.best.subset = data.frame(R2adj = which.max(result.sum$adjr2), CP = which.min(result.sum$cp), BIC = which.min(result.sum$bic))
+which.best.subset
+```
+
+We use the brute force algorithm to select the best subset of predictor variables from the previous model. The previous model we are referring to uses log(mpg) as the response variable, and drops displacement from the predictor variables. According to R2adj, Mallow's CP, and BIC, each criterion results in the same subset of 5 variables. The optimal subset of predictor variables are: weight, year, the two levels of origin, and horsepower. Cylinders appears to be the least significant variable. Thus, according to the brute force algorithm, it should be left out from the best subset. If the various criterion resulted in unique subsets, I would select the best subset according to BIC. BIC should always be preferred since it outperforms the other criterion in choosing the optimal subset. R2adj selects the subset with the highest R2adj. Differently, Mallow's CP and BIC select the subset according to the lowest corresponding value.
+
+# Stepwise Selection
+
+Backward stepwise selection:
+
+```{r, echo=FALSE}
+Full = lm(Auto$mpg  ~ Auto$cylinders + Auto$displacement + Auto$horsepower + Auto$weight + Auto$acceleration + Auto$year + as.factor(Auto$origin) + Auto$name)
+backward = step(Full, direction='backward', scope=formula(Full), trace=0)
+backward$anova
+```
+
+Forward stepwise selection:
+
+```{r, echo=FALSE}
+Empty = lm(Auto$mpg ~ 1, data = Auto)
+forward = step(Empty, direction='forward', scope=formula(Full), trace=0)
+forward$anova
+```
+
+Bi-direction stepwise selection:
+
+```{r, echo=FALSE}
+both = step(Empty, direction='both', scope=formula(Full), trace=0)
+both$anova
+```
+
+Considering all the variables in the the original dataset, we can perform backward, forward, or bi-direction stepwise selections. Backward stepwise selection begins with the full model, and drops one variable at a time until the AIC is minimized. Forward stepwise selection begins with only the y intercept(empty model), and adds predictor variables until the AIC is minimized. Lastly, bi-direction stepwise selection both adds and drops variables until the AIC is minimized. However, we must keep in mind that stepwise selections often identify an incorrect model because they find the local optimal solution, rather than the global optimal solution. We chose to select the subset of variables through forward stepwise selection.
+
+# Compare Best Subsets of Predictor Variables
+
+Interestingly, the comparison of the brute force algorithm and the forward stepwise selection yields significantly unique results. According to R2adj, Mallow's CP, and BIC, the brute force algorithm consistently selects the same 5 predictor variables: weight, year, horsepower, and the two levels of origin. However, the forward stepwise selection, which yields the same results as the other stepwise selections, selects 6 predictor variables. In addition, instead of selecting the origin as a qualitative variable, it selects name instead. This is surprising, based on the box plot interpretations and the number of levels for the variable, name. Lastly, the forward stepwise selection also adds acceleration and cylinders to the model. In conclusion, the only variables in both subset selections are weight, year, and horsepower. The brute force algorithm accounts for origin, while the stepwise selection accounts for name, acceleration, and cylinders. We would like to learn more about the reasoning for the differences in selection.
+
+# Test Whether Variables are Statistically Significant
+
+```{r, echo=FALSE}
+model_brute = lm(y_log ~ Auto$horsepower + Auto$weight + Auto$year + as.factor(Auto$origin), data = Auto)
+model_full = lm(y_log ~ Auto$cylinders + Auto$displacement + Auto$horsepower + Auto$weight + Auto$acceleration + Auto$year + as.factor(Auto$origin) + Auto$name)
+anova(model_brute, model_full)
+```
+
+Based on the comparison between the brute force algorithm model and the full model, the null hypothesis is $H_o: B_{cylinders} = B_{displacement} = B_{acceleration} = B_{name} = 0$. The alternative hypothesis is $H_a: \text{ at least one of the } \beta_i \text{ in the null hypothesis is not equal to } 0$.
+
+$F* = (\frac{SSR_{brute}-SSR_{full}}{Res.Df(SSR_{brute})} - \frac{Res.Df(SSR_{full})}{SSR_{full}/Res.Df(SSR_{full})}) = 1.8276$
+
+The test statistic follows the F distribution. The implied level of significance is alpha = 0.05.
+
+Since the p-value \< $\alpha$, we reject the null hypothesis ($H_0$). We conclude that the null hypothesis is false. At least one of the $\beta_i$ in the null hypothesis is not equal to 0. Thus, we cannot drop all the variables from the model. We will have to drop each variable one at a time to figure out exactly which variables can be dropped, and which cannot.
+
+# Conclusions on Brute Force Algorithm
+
+```{r, echo=FALSE}
+summary(model_brute)
+```
+
+The Multiple Linear Regression Model derived from the brute force algorithm appears to be a fairly good fit for the model. This conclusion is based on the p-values of each individual variable, the p-value of the whole set of predictors, and the R-squared. The definition of $b_{horsepower}$ is that for a one unit increase in horsepower, the average decrease in log(mpg) is -9.463e-04, given the other predictor variables are held constant. The definition of $b_{weight}$ is that for a one unit increase in weight, the average decrease in log(mpg) is -2.503e-04, given the other predictor variables are held constant. The definition of $b_{year}$ is that for a one unit increase in year, the average increase in log(mpg) is 3.017e-02, given the other predictor variables are held constant. Differently, the definition of $b_{as.factor(Auto\$origin)2}$ is the average difference in log(mpg) between cars originating from America and Europe. Lastly, the definition of $b_{as.factor(Auto\$origin)3}$ is the average difference in log(mpg) between cars originating from America and Japan. Origin and year are the only two predictor variables with a positive relationship to log(mpg). The other predictor variables in this Multiple Linear Regression model have a negative relationship to log(mpg). Since the p-value of each individual variable is small, we know that each variable is statistically significant to the model. Since the overall p-value is small, we know that a relationship exists between the predictor variables and log(mpg). Lastly, since R-squared = 0.88, we know that 88% of the variation in Y, AKA log(mpg), is explained by the set of predictor variables. The significant predictor variables, ordered by importance, are weight, year, origin, and horsepower.
+
+# Create a New Dataset
+
+```{r, echo=TRUE}
+newdata = data.frame(
+  cylinders = c(4, 8, 8, 6, 8),
+  displacement = c(100, 120, 130, 150, 180), 
+  horsepower = c(67, 86, 98, 143, 129),
+  weight = c(2910, 2290, 2051, 2700, 2065),
+  year = c(72, 73, 81, 79, 82), 
+  origin = factor(c(1, 2, 1, 3, 2))
+)
+```
+
+# Point Predictions
+
+```{r, echo=TRUE, results='hide', warning=FALSE}
+predict(mod_log2, newdata = newdata)
+```
+
+Using the model from part 9, let us predict the mpg of a car with the vehicle characteristics of 4 cylinders, 100 inches of engine displacement, 67 horsepower, a weight of 2910 pounds, a model year of 1972, and originating from America. Given these values for the predictor variables, we expect it to run $e^{2.729744} = 15.33$ miles per gallon of gas.
